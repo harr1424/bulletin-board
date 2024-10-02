@@ -28,14 +28,12 @@ struct RegistrationPayload {
 pub async fn register_token(
     tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
     token: Path<String>,
-    body: Json<RegistrationPayload>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let mut tokens = tokens
         .lock()
         .map_err(|_| actix_web::error::ErrorInternalServerError("Failed to acquire lock on map"))?;
 
-    let entry = tokens.entry(token.to_string()).or_insert_with(HashSet::new);
-    entry.insert(body.lang.clone());
+    let _ = tokens.entry(token.to_string()).or_insert_with(HashSet::new);
 
     Ok(HttpResponse::Created().finish())
 }
@@ -112,6 +110,7 @@ pub async fn unregister_token(
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 
     let tokens: Arc<Mutex<HashMap<String, HashSet<Langs>>>> = Arc::new(Mutex::new(HashMap::new()));
@@ -150,17 +149,15 @@ mod tests {
         )
         .await;
 
-        let payload = json!({ "lang": "English" });
         let req = test::TestRequest::post()
             .uri("/api/register/test_token")
-            .set_json(&payload)
             .to_request();
         let resp = test::call_service(&mut app, req).await;
         assert_eq!(resp.status(), StatusCode::CREATED);
 
         let tokens = tokens.lock().unwrap();
         assert!(tokens.contains_key("test_token"));
-        assert!(tokens.get("test_token").unwrap().contains(&Langs::English));
+        assert!(tokens.get("test_token").unwrap().is_empty());
     }
 
     #[actix_rt::test]
