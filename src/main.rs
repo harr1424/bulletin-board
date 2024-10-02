@@ -11,12 +11,12 @@ use std::{
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash)]
 enum Langs {
-    En,
-    Es,
-    Fr,
-    It,
-    Po,
-    De,
+    English,
+    Spanish,
+    French,
+    Italian,
+    Portuguese,
+    German,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
@@ -137,6 +137,8 @@ mod tests {
     use super::*;
     use actix_web::{http::StatusCode, test, App};
     use serde_json::json;
+    use std::collections::{HashMap, HashSet};
+    use std::sync::{Arc, Mutex};
 
     #[actix_rt::test]
     async fn test_register_token() {
@@ -148,7 +150,7 @@ mod tests {
         )
         .await;
 
-        let payload = json!({ "lang": "En" });
+        let payload = json!({ "lang": "English" });
         let req = test::TestRequest::post()
             .uri("/api/register/test_token")
             .set_json(&payload)
@@ -158,14 +160,14 @@ mod tests {
 
         let tokens = tokens.lock().unwrap();
         assert!(tokens.contains_key("test_token"));
-        assert!(tokens.get("test_token").unwrap().contains(&Langs::En));
+        assert!(tokens.get("test_token").unwrap().contains(&Langs::English));
     }
 
     #[actix_rt::test]
     async fn test_get_langs() {
         let mut map = HashMap::new();
         let mut set = HashSet::new();
-        set.insert(Langs::En);
+        set.insert(Langs::English);
         map.insert("test_token".to_string(), set);
         let tokens: Arc<Mutex<HashMap<String, HashSet<Langs>>>> = Arc::new(Mutex::new(map));
         let mut app = test::init_service(
@@ -182,14 +184,14 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
 
         let langs: HashSet<Langs> = test::read_body_json(resp).await;
-        assert!(langs.contains(&Langs::En));
+        assert!(langs.contains(&Langs::English));
     }
 
     #[actix_rt::test]
     async fn test_add_langs() {
         let mut map = HashMap::new();
         let mut set = HashSet::new();
-        set.insert(Langs::En);
+        set.insert(Langs::English);
         map.insert("test_token".to_string(), set);
         let tokens: Arc<Mutex<HashMap<String, HashSet<Langs>>>> = Arc::new(Mutex::new(map));
         let mut app = test::init_service(
@@ -199,7 +201,7 @@ mod tests {
         )
         .await;
 
-        let payload = json!({ "lang": "Es" });
+        let payload = json!({ "lang": "Spanish" });
         let req = test::TestRequest::post()
             .uri("/api/add_langs/test_token")
             .set_json(&payload)
@@ -208,14 +210,14 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
 
         let tokens = tokens.lock().unwrap();
-        assert!(tokens.get("test_token").unwrap().contains(&Langs::Es));
+        assert!(tokens.get("test_token").unwrap().contains(&Langs::Spanish));
     }
 
     #[actix_rt::test]
     async fn test_remove_langs() {
         let mut map = HashMap::new();
         let mut set = HashSet::new();
-        set.insert(Langs::En);
+        set.insert(Langs::English);
         map.insert("test_token".to_string(), set);
         let tokens: Arc<Mutex<HashMap<String, HashSet<Langs>>>> = Arc::new(Mutex::new(map));
         let mut app = test::init_service(
@@ -225,7 +227,7 @@ mod tests {
         )
         .await;
 
-        let payload = json!({ "lang": "En" });
+        let payload = json!({ "lang": "English" });
         let req = test::TestRequest::post()
             .uri("/api/remove_langs/test_token")
             .set_json(&payload)
@@ -234,14 +236,14 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
 
         let tokens = tokens.lock().unwrap();
-        assert!(!tokens.get("test_token").unwrap().contains(&Langs::En));
+        assert!(!tokens.get("test_token").unwrap().contains(&Langs::English));
     }
 
     #[actix_rt::test]
     async fn test_unregister_token() {
         let mut map = HashMap::new();
         let mut set = HashSet::new();
-        set.insert(Langs::En);
+        set.insert(Langs::English);
         map.insert("test_token".to_string(), set);
         let tokens: Arc<Mutex<HashMap<String, HashSet<Langs>>>> = Arc::new(Mutex::new(map));
         let mut app = test::init_service(
