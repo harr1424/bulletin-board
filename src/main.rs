@@ -54,6 +54,18 @@ pub async fn get_langs(
     }
 }
 
+// endpoint to get all tokens and associated langs
+#[get("/api/all_tokens")]
+pub async fn get_all_tokens(
+    tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
+) -> Result<HttpResponse, actix_web::Error> {
+    let tokens = tokens
+        .lock()
+        .map_err(|_| actix_web::error::ErrorInternalServerError("Failed to acquire lock on map"))?;
+
+    Ok(HttpResponse::Ok().json(tokens.clone()))
+}
+
 // endpoint to add langs associated with a token
 #[post("/api/add_langs/{token}")]
 pub async fn add_langs(
@@ -122,11 +134,13 @@ async fn main() -> std::io::Result<()> {
             .app_data(Data::new(tokens.clone()))
             .service(register_token)
             .service(get_langs)
+            .service(get_all_tokens)
             .service(add_langs)
             .service(remove_langs)
             .service(unregister_token)
     })
-    .bind(("127.0.0.1", 8080))?
+    //.bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 7273))?
     .run()
     .await
 }
