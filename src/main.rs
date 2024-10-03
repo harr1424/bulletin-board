@@ -1,4 +1,6 @@
 use actix_web::{get, middleware::Logger, post, web::Data, App, HttpServer};
+use chrono::{DateTime, Utc};
+use uuid::Uuid;
 use std::collections::HashSet;
 use actix_web::{
     web::{Json, Path},
@@ -22,6 +24,13 @@ enum Langs {
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 struct RegistrationPayload {
     lang: Langs,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+struct Message {
+    id: Uuid,
+    created: DateTime<Utc>,
+    content: String,
 }
 
 #[post("/api/register/{token}")]
@@ -120,18 +129,57 @@ pub async fn unregister_token(
     Ok(HttpResponse::Ok().finish())
 }
 
+// #[post("/api/messages/en")]
+// pub async fn add_en_message(
+//     en_message_repo: Data<Arc<Mutex<Vec<Message>>>>,
+//     body: Json<Message>,
+// ) -> Result<HttpResponse, actix_web::Error> {
+//     let mut en_message_repo = en_message_repo.lock().unwrap();
+//     en_message_repo.push(body.clone());
+//     Ok(HttpResponse::Ok().finish())
+// }
+
+// Macro to generate add_message functions for different languages
+macro_rules! create_add_message_endpoint {
+    ($repo:ident, $route:expr, $fn_name:ident) => {
+        #[post($route)]
+        pub async fn $fn_name(
+            $repo : Data<Arc<Mutex<Vec<Message>>>>,
+            body: Json<Message>,
+        ) -> Result<HttpResponse, actix_web::Error> {
+            let mut $repo  = $repo .lock().unwrap();
+            $repo .push(body.clone());
+            Ok(HttpResponse::Ok().finish())
+        }
+    };
+}
+
+create_add_message_endpoint!(en_message_repo, "/api/messages/en", add_en_message);
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 
     let tokens: Arc<Mutex<HashMap<String, HashSet<Langs>>>> = Arc::new(Mutex::new(HashMap::new()));
+    let en_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
+    let es_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
+    let fr_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
+    let it_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
+    let po_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
+    let de_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
 
     HttpServer::new(move || {
         let logger = Logger::default();
         App::new()
             .wrap(logger)
             .app_data(Data::new(tokens.clone()))
+            .app_data(Data::new(en_message_repo.clone()))
+            .app_data(Data::new(es_message_repo.clone()))
+            .app_data(Data::new(fr_message_repo.clone()))
+            .app_data(Data::new(it_message_repo.clone()))
+            .app_data(Data::new(po_message_repo.clone()))
+            .app_data(Data::new(de_message_repo.clone()))
             .service(register_token)
             .service(get_langs)
             .service(get_all_tokens)
