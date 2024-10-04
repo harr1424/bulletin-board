@@ -1,4 +1,4 @@
-use actix_web::{get, middleware::Logger, post, web::Data, App, HttpServer};
+use actix_web::{post, get, patch, delete, middleware::Logger, web::Data, App, HttpServer};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 use std::collections::HashSet;
@@ -33,6 +33,13 @@ struct Message {
     content: String,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+struct EditMessage {
+    id: Uuid,
+    content: String,
+}
+
+// Endpoint to register a token
 #[post("/api/register/{token}")]
 pub async fn register_token(
     tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
@@ -47,7 +54,7 @@ pub async fn register_token(
     Ok(HttpResponse::Created().finish())
 }
 
-// endpoint to get langs associated with a token
+// Endpoint to get langs associated with a token
 #[get("/api/get_langs/{token}")]
 pub async fn get_langs(
     tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
@@ -63,7 +70,7 @@ pub async fn get_langs(
     }
 }
 
-// endpoint to get all tokens and associated langs
+// Endpoint to get all tokens and associated langs
 #[get("/api/all_tokens")]
 pub async fn get_all_tokens(
     tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
@@ -75,7 +82,7 @@ pub async fn get_all_tokens(
     Ok(HttpResponse::Ok().json(tokens.clone()))
 }
 
-// endpoint to add langs associated with a token
+// Endpoint to add langs associated with a token
 #[post("/api/add_langs/{token}")]
 pub async fn add_langs(
     tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
@@ -96,7 +103,7 @@ pub async fn add_langs(
     Ok(HttpResponse::Ok().finish())
 }
 
-// endpoint to remove langs associated with a token
+// Endpoint to remove langs associated with a token
 #[post("/api/remove_langs/{token}")]
 pub async fn remove_langs(
     tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
@@ -117,7 +124,7 @@ pub async fn remove_langs(
     Ok(HttpResponse::Ok().finish())
 }
 
-// endpoint to unregister token
+// Endpoint to unregister token
 #[post("/api/unregister/{token}")]
 pub async fn unregister_token(
     tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
@@ -128,16 +135,6 @@ pub async fn unregister_token(
     tokens.remove(&token.to_string());
     Ok(HttpResponse::Ok().finish())
 }
-
-// #[post("/api/messages/en")]
-// pub async fn add_en_message(
-//     en_message_repo: Data<Arc<Mutex<Vec<Message>>>>,
-//     body: Json<Message>,
-// ) -> Result<HttpResponse, actix_web::Error> {
-//     let mut en_message_repo = en_message_repo.lock().unwrap();
-//     en_message_repo.push(body.clone());
-//     Ok(HttpResponse::Ok().finish())
-// }
 
 // Macro to generate add_message functions for different languages
 macro_rules! create_add_message_endpoint {
@@ -155,6 +152,77 @@ macro_rules! create_add_message_endpoint {
 }
 
 create_add_message_endpoint!(en_message_repo, "/api/messages/en", add_en_message);
+create_add_message_endpoint!(es_message_repo, "/api/messages/es", add_es_message);
+create_add_message_endpoint!(fr_message_repo, "/api/messages/fr", add_fr_message);
+create_add_message_endpoint!(it_message_repo, "/api/messages/it", add_it_message);
+create_add_message_endpoint!(po_message_repo, "/api/messages/po", add_po_message);
+create_add_message_endpoint!(de_message_repo, "/api/messages/de", add_de_message);
+
+// Macro to generate get_messages functions for different languages
+macro_rules! create_get_messages_endpoint {
+    ($repo:ident, $route:expr, $fn_name:ident) => {
+        #[get($route)]
+        pub async fn $fn_name(
+            $repo : Data<Arc<Mutex<Vec<Message>>>>,
+        ) -> Result<HttpResponse, actix_web::Error> {
+            let $repo  = $repo .lock().unwrap();
+            Ok(HttpResponse::Ok().json($repo .clone()))
+        }
+    };
+}
+
+create_get_messages_endpoint!(en_message_repo, "/api/messages/en", get_en_messages);
+create_get_messages_endpoint!(es_message_repo, "/api/messages/es", get_es_messages);
+create_get_messages_endpoint!(fr_message_repo, "/api/messages/fr", get_fr_messages);
+create_get_messages_endpoint!(it_message_repo, "/api/messages/it", get_it_messages);
+create_get_messages_endpoint!(po_message_repo, "/api/messages/po", get_po_messages);
+create_get_messages_endpoint!(de_message_repo, "/api/messages/de", get_de_messages);
+
+// Macro to generate edit_message functions for different languages
+macro_rules! create_edit_message_endpoint {
+    ($repo:ident, $route:expr, $fn_name:ident) => {
+        #[patch($route)]
+        pub async fn $fn_name(
+            $repo : Data<Arc<Mutex<Vec<Message>>>>,
+            body: Json<EditMessage>,
+        ) -> Result<HttpResponse, actix_web::Error> {
+            let mut $repo  = $repo .lock().unwrap();
+            let index = $repo.iter().position(|x| x.id == body.id).unwrap();
+            $repo[index].content = body.content.clone();
+            Ok(HttpResponse::Ok().finish())
+        }
+    };
+}
+
+create_edit_message_endpoint!(en_message_repo, "/api/messages/en", edit_en_message);
+create_edit_message_endpoint!(es_message_repo, "/api/messages/es", edit_es_message);
+create_edit_message_endpoint!(fr_message_repo, "/api/messages/fr", edit_fr_message);
+create_edit_message_endpoint!(it_message_repo, "/api/messages/it", edit_it_message);
+create_edit_message_endpoint!(po_message_repo, "/api/messages/po", edit_po_message);
+create_edit_message_endpoint!(de_message_repo, "/api/messages/de", edit_de_message);
+
+// Macro to generate delete_message functions for different languages
+macro_rules! create_delete_message_endpoint {
+    ($repo:ident, $route:expr, $fn_name:ident) => {
+        #[delete($route)]
+        pub async fn $fn_name(
+            $repo : Data<Arc<Mutex<Vec<Message>>>>,
+            id: Path<Uuid>,
+        ) -> Result<HttpResponse, actix_web::Error> {
+            let mut $repo  = $repo .lock().unwrap();
+            let index = $repo.iter().position(|x| x.id == *id).unwrap();
+            $repo.remove(index);
+            Ok(HttpResponse::Ok().finish())
+        }
+    };
+}
+
+create_delete_message_endpoint!(en_message_repo, "/api/messages/en/{id}", delete_en_message);
+create_delete_message_endpoint!(es_message_repo, "/api/messages/es/{id}", delete_es_message);
+create_delete_message_endpoint!(fr_message_repo, "/api/messages/fr/{id}", delete_fr_message);
+create_delete_message_endpoint!(it_message_repo, "/api/messages/it/{id}", delete_it_message);
+create_delete_message_endpoint!(po_message_repo, "/api/messages/po/{id}", delete_po_message);
+create_delete_message_endpoint!(de_message_repo, "/api/messages/de/{id}", delete_de_message);
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
