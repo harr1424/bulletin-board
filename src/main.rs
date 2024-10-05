@@ -3,7 +3,7 @@ use actix_web::{
     web::{Json, Path},
     HttpResponse,
 };
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use std::collections::HashSet;
 use std::{
     collections::HashMap,
@@ -83,7 +83,7 @@ pub async fn get_all_tokens(
 }
 
 // Endpoint to add langs associated with a token
-#[post("/api/add_langs/{token}")]
+#[patch("/api/add_langs/{token}")]
 pub async fn add_langs(
     tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
     token: Path<String>,
@@ -125,7 +125,7 @@ pub async fn remove_langs(
 }
 
 // Endpoint to unregister token
-#[post("/api/unregister/{token}")]
+#[delete("/api/unregister/{token}")]
 pub async fn unregister_token(
     tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
     token: Path<String>,
@@ -142,10 +142,15 @@ macro_rules! create_add_message_endpoint {
         #[post($route)]
         pub async fn $fn_name(
             $repo: Data<Arc<Mutex<Vec<Message>>>>,
-            body: Json<Message>,
+            body: Json<String>,
         ) -> Result<HttpResponse, actix_web::Error> {
             let mut $repo = $repo.lock().unwrap();
-            $repo.push(body.clone());
+            let new_message = Message {
+                id: Uuid::new_v4(),
+                created: Utc::now(),
+                content: body.clone(),
+            };
+            $repo.push(new_message);
             Ok(HttpResponse::Ok().finish())
         }
     };
@@ -224,6 +229,13 @@ create_delete_message_endpoint!(it_message_repo, "/api/messages/it/{id}", delete
 create_delete_message_endpoint!(po_message_repo, "/api/messages/po/{id}", delete_po_message);
 create_delete_message_endpoint!(de_message_repo, "/api/messages/de/{id}", delete_de_message);
 
+// Function to iterate over a Arc<Mutex<Vec<Message>>> and remove any messages exceeding a certain age
+fn remove_old_messages(repo: Arc<Mutex<Vec<Message>>>, max_age: Duration) {
+    let mut repo = repo.lock().unwrap();
+    let now = Utc::now();
+    repo.retain(|msg| now.signed_duration_since(msg.created) < max_age);
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "debug");
@@ -236,6 +248,27 @@ async fn main() -> std::io::Result<()> {
     let it_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
     let po_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
     let de_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
+
+    let en_repo_clone = en_message_repo.clone();
+    let es_repo_clone = es_message_repo.clone();
+    let fr_repo_clone = fr_message_repo.clone();
+    let it_repo_clone = it_message_repo.clone();
+    let po_repo_clone = po_message_repo.clone();
+    let de_repo_clone = de_message_repo.clone();
+
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60 * 60 * 24)); // Run daily
+        loop {
+            interval.tick().await;
+            let max_age = Duration::weeks(1);
+            remove_old_messages(en_repo_clone.clone(), max_age);
+            remove_old_messages(es_repo_clone.clone(), max_age);
+            remove_old_messages(fr_repo_clone.clone(), max_age);
+            remove_old_messages(it_repo_clone.clone(), max_age);
+            remove_old_messages(po_repo_clone.clone(), max_age);
+            remove_old_messages(de_repo_clone.clone(), max_age);
+        }
+    });
 
     HttpServer::new(move || {
         let logger = Logger::default();
@@ -254,6 +287,30 @@ async fn main() -> std::io::Result<()> {
             .service(add_langs)
             .service(remove_langs)
             .service(unregister_token)
+            .service(add_en_message)
+            .service(get_en_messages)
+            .service(edit_en_message)
+            .service(delete_en_message)
+            .service(add_es_message)
+            .service(get_es_messages)
+            .service(edit_es_message)
+            .service(delete_es_message)
+            .service(add_fr_message)
+            .service(get_fr_messages)
+            .service(edit_fr_message)
+            .service(delete_fr_message)
+            .service(add_it_message)
+            .service(get_it_messages)
+            .service(edit_it_message)
+            .service(delete_it_message)
+            .service(add_po_message)
+            .service(get_po_messages)
+            .service(edit_po_message)
+            .service(delete_po_message)
+            .service(add_de_message)
+            .service(get_de_messages)
+            .service(edit_de_message)
+            .service(delete_de_message)
     })
     //.bind(("127.0.0.1", 8080))?
     .bind(("0.0.0.0", 7273))?
