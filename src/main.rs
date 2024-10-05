@@ -104,7 +104,7 @@ pub async fn add_langs(
 }
 
 // Endpoint to remove langs associated with a token
-#[post("/api/remove_langs/{token}")]
+#[patch("/api/remove_langs/{token}")]
 pub async fn remove_langs(
     tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
     token: Path<String>,
