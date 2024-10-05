@@ -81,9 +81,13 @@ macro_rules! create_edit_message_endpoint {
             let mut $repo = $repo.lock().map_err(|_| {
                 actix_web::error::ErrorInternalServerError("Failed to acquire lock on message repo")
             })?;
-            let index = $repo.iter().position(|x| x.id == body.id).unwrap();
-            $repo[index].content = body.content.clone();
-            Ok(HttpResponse::Ok().finish())
+
+            if let Some(index) = $repo.iter().position(|x| x.id == body.id) {
+                $repo.remove(index);
+                Ok(HttpResponse::Ok().finish())
+            } else {
+                Ok(HttpResponse::NotFound().finish())
+            }
         }
     };
 }
