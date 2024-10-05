@@ -1,6 +1,7 @@
 use actix_web::{
-    web::{Json, Path, Data},
-    HttpResponse, delete, get, patch, post
+    delete, get, patch, post,
+    web::{Data, Json, Path},
+    HttpResponse,
 };
 use chrono::{DateTime, Duration, Utc};
 use std::sync::{Arc, Mutex};
@@ -26,7 +27,9 @@ macro_rules! create_add_message_endpoint {
             $repo: Data<Arc<Mutex<Vec<Message>>>>,
             body: Json<String>,
         ) -> Result<HttpResponse, actix_web::Error> {
-            let mut $repo = $repo.lock().unwrap();
+            let mut $repo = $repo.lock().map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to acquire lock on message repo")
+            })?;
             let new_message = Message {
                 id: Uuid::new_v4(),
                 created: Utc::now(),
@@ -52,7 +55,9 @@ macro_rules! create_get_messages_endpoint {
         pub async fn $fn_name(
             $repo: Data<Arc<Mutex<Vec<Message>>>>,
         ) -> Result<HttpResponse, actix_web::Error> {
-            let $repo = $repo.lock().unwrap();
+            let $repo = $repo.lock().map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to acquire lock on message repo")
+            })?;
             Ok(HttpResponse::Ok().json($repo.clone()))
         }
     };
@@ -73,7 +78,9 @@ macro_rules! create_edit_message_endpoint {
             $repo: Data<Arc<Mutex<Vec<Message>>>>,
             body: Json<EditMessage>,
         ) -> Result<HttpResponse, actix_web::Error> {
-            let mut $repo = $repo.lock().unwrap();
+            let mut $repo = $repo.lock().map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to acquire lock on message repo")
+            })?;
             let index = $repo.iter().position(|x| x.id == body.id).unwrap();
             $repo[index].content = body.content.clone();
             Ok(HttpResponse::Ok().finish())
@@ -96,10 +103,16 @@ macro_rules! create_delete_message_endpoint {
             $repo: Data<Arc<Mutex<Vec<Message>>>>,
             id: Path<Uuid>,
         ) -> Result<HttpResponse, actix_web::Error> {
-            let mut $repo = $repo.lock().unwrap();
-            let index = $repo.iter().position(|x| x.id == *id).unwrap();
-            $repo.remove(index);
-            Ok(HttpResponse::Ok().finish())
+            let mut $repo = $repo.lock().map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to acquire lock on message repo")
+            })?;
+            
+            if let Some(index) = $repo.iter().position(|x| x.id == *id) {
+                $repo.remove(index);
+                Ok(HttpResponse::Ok().finish())
+            } else {
+                Ok(HttpResponse::NotFound().finish())
+            }
         }
     };
 }

@@ -1,6 +1,7 @@
 use actix_web::{
-    web::{Json, Path, Data},
-    HttpResponse, delete, get, patch, post
+    delete, get, patch, post,
+    web::{Data, Json, Path},
+    HttpResponse,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -8,7 +9,6 @@ use std::{
 };
 
 use crate::Langs;
-
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 struct RegistrationPayload {
@@ -106,8 +106,14 @@ pub async fn unregister_token(
     tokens: Data<Arc<Mutex<HashMap<String, HashSet<Langs>>>>>,
     token: Path<String>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    // remove token from hashmap
-    let mut tokens = tokens.lock().unwrap();
+    let mut tokens = tokens
+        .lock()
+        .map_err(|_| actix_web::error::ErrorInternalServerError("Failed to acquire lock on map"))?;
+
+    if !tokens.contains_key(&token.to_string()) {
+        return Ok(HttpResponse::NotFound().finish());
+    }
+
     tokens.remove(&token.to_string());
     Ok(HttpResponse::Ok().finish())
 }

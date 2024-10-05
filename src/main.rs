@@ -36,7 +36,7 @@ async fn main() -> std::io::Result<()> {
     let de_repo_clone = de_message_repo.clone();
 
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60 * 60 * 24)); // Run daily
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60 * 60)); // Run hourly
         loop {
             interval.tick().await;
             let max_age = Duration::weeks(1);
