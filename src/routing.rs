@@ -7,6 +7,8 @@ pub fn configure_client_routes(cfg: &mut ServiceConfig) {
     cfg.service(get_langs);
     cfg.service(get_all_tokens);
     cfg.service(add_langs);
+    cfg.service(remove_langs);
+    cfg.service(unregister_token);
 }
 
 pub fn configure_message_routes(cfg: &mut ServiceConfig) {

@@ -88,7 +88,7 @@ mod tests {
         .await;
 
         let payload = json!({ "lang": "Spanish" });
-        let req = test::TestRequest::post()
+        let req = test::TestRequest::patch()
             .uri("/api/add_langs/test_token")
             .set_json(&payload)
             .to_request();
@@ -114,7 +114,7 @@ mod tests {
         .await;
 
         let payload = json!({ "lang": "English" });
-        let req = test::TestRequest::post()
+        let req = test::TestRequest::patch()
             .uri("/api/remove_langs/test_token")
             .set_json(&payload)
             .to_request();
@@ -139,7 +139,7 @@ mod tests {
         )
         .await;
 
-        let req = test::TestRequest::post()
+        let req = test::TestRequest::delete()
             .uri("/api/unregister/test_token")
             .to_request();
         let resp = test::call_service(&mut app, req).await;
