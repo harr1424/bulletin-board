@@ -83,7 +83,7 @@ macro_rules! create_edit_message_endpoint {
             })?;
 
             if let Some(index) = $repo.iter().position(|x| x.id == body.id) {
-                $repo.remove(index);
+                $repo[index].content = body.content.clone();
                 Ok(HttpResponse::Ok().finish())
             } else {
                 Ok(HttpResponse::NotFound().finish())
