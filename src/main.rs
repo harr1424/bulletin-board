@@ -1,22 +1,28 @@
-use actix_web::{middleware::Logger, web::Data, App, HttpServer};
+use actix_web::{web::scope, middleware::Logger, web::Data, App, HttpServer};
+use auth::ApiKeyMiddleware;
 use chrono::Duration;
 use std::collections::HashSet;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
+use dotenv::dotenv;
 
-use crate::langs::Langs;
-use crate::messages::{Message, remove_old_messages};
-
-mod langs;
+mod auth;
 mod clients;
+mod langs;
 mod messages;
 mod routing;
+mod security_headers;
 mod tests;
+
+use langs::Langs;
+use messages::{remove_old_messages, Message};
+use security_headers::SecurityHeaders;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().expect("Failed to read .env file"); 
     std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 
@@ -53,6 +59,7 @@ async fn main() -> std::io::Result<()> {
         let logger = Logger::default();
         App::new()
             .wrap(logger)
+            .wrap(SecurityHeaders)
             .app_data(Data::new(tokens.clone()))
             .app_data(Data::new(en_message_repo.clone()))
             .app_data(Data::new(es_message_repo.clone()))
@@ -61,7 +68,12 @@ async fn main() -> std::io::Result<()> {
             .app_data(Data::new(po_message_repo.clone()))
             .app_data(Data::new(de_message_repo.clone()))
             .configure(routing::configure_client_routes)
-            .configure(routing::configure_message_routes)
+            .configure(routing::configure_insecure_message_routes)
+            .service(
+                scope("/admin")
+                    .wrap(ApiKeyMiddleware)
+                    .configure(routing::configure_secure_message_routes),
+            )
     })
     //.bind(("127.0.0.1", 8080))?
     .bind(("0.0.0.0", 7273))?

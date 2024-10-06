@@ -41,12 +41,12 @@ macro_rules! create_add_message_endpoint {
     };
 }
 
-create_add_message_endpoint!(en_message_repo, "/api/messages/en", add_en_message);
-create_add_message_endpoint!(es_message_repo, "/api/messages/es", add_es_message);
-create_add_message_endpoint!(fr_message_repo, "/api/messages/fr", add_fr_message);
-create_add_message_endpoint!(it_message_repo, "/api/messages/it", add_it_message);
-create_add_message_endpoint!(po_message_repo, "/api/messages/po", add_po_message);
-create_add_message_endpoint!(de_message_repo, "/api/messages/de", add_de_message);
+create_add_message_endpoint!(en_message_repo, "/admin/api/messages/en", add_en_message);
+create_add_message_endpoint!(es_message_repo, "/admin/api/messages/es", add_es_message);
+create_add_message_endpoint!(fr_message_repo, "/admin/api/messages/fr", add_fr_message);
+create_add_message_endpoint!(it_message_repo, "/admin/api/messages/it", add_it_message);
+create_add_message_endpoint!(po_message_repo, "/admin/api/messages/po", add_po_message);
+create_add_message_endpoint!(de_message_repo, "/admin/api/messages/de", add_de_message);
 
 // Macro to generate get_messages functions for different languages
 macro_rules! create_get_messages_endpoint {
@@ -92,12 +92,12 @@ macro_rules! create_edit_message_endpoint {
     };
 }
 
-create_edit_message_endpoint!(en_message_repo, "/api/messages/en", edit_en_message);
-create_edit_message_endpoint!(es_message_repo, "/api/messages/es", edit_es_message);
-create_edit_message_endpoint!(fr_message_repo, "/api/messages/fr", edit_fr_message);
-create_edit_message_endpoint!(it_message_repo, "/api/messages/it", edit_it_message);
-create_edit_message_endpoint!(po_message_repo, "/api/messages/po", edit_po_message);
-create_edit_message_endpoint!(de_message_repo, "/api/messages/de", edit_de_message);
+create_edit_message_endpoint!(en_message_repo, "/admin/api/messages/en", edit_en_message);
+create_edit_message_endpoint!(es_message_repo, "/admin/api/messages/es", edit_es_message);
+create_edit_message_endpoint!(fr_message_repo, "/admin/api/messages/fr", edit_fr_message);
+create_edit_message_endpoint!(it_message_repo, "/admin/api/messages/it", edit_it_message);
+create_edit_message_endpoint!(po_message_repo, "/admin/api/messages/po", edit_po_message);
+create_edit_message_endpoint!(de_message_repo, "/admin/api/messages/de", edit_de_message);
 
 // Macro to generate delete_message functions for different languages
 macro_rules! create_delete_message_endpoint {
@@ -121,12 +121,12 @@ macro_rules! create_delete_message_endpoint {
     };
 }
 
-create_delete_message_endpoint!(en_message_repo, "/api/messages/en/{id}", delete_en_message);
-create_delete_message_endpoint!(es_message_repo, "/api/messages/es/{id}", delete_es_message);
-create_delete_message_endpoint!(fr_message_repo, "/api/messages/fr/{id}", delete_fr_message);
-create_delete_message_endpoint!(it_message_repo, "/api/messages/it/{id}", delete_it_message);
-create_delete_message_endpoint!(po_message_repo, "/api/messages/po/{id}", delete_po_message);
-create_delete_message_endpoint!(de_message_repo, "/api/messages/de/{id}", delete_de_message);
+create_delete_message_endpoint!(en_message_repo, "/admin/api/messages/en/{id}", delete_en_message);
+create_delete_message_endpoint!(es_message_repo, "/admin/api/messages/es/{id}", delete_es_message);
+create_delete_message_endpoint!(fr_message_repo, "/admin/api/messages/fr/{id}", delete_fr_message);
+create_delete_message_endpoint!(it_message_repo, "/admin/api/messages/it/{id}", delete_it_message);
+create_delete_message_endpoint!(po_message_repo, "/admin/api/messages/po/{id}", delete_po_message);
+create_delete_message_endpoint!(de_message_repo, "/admin/api/messages/de/{id}", delete_de_message);
 
 // Function to iterate over a Arc<Mutex<Vec<Message>>> and remove any messages exceeding a certain age
 pub fn remove_old_messages(repo: Arc<Mutex<Vec<Message>>>, max_age: Duration) {
