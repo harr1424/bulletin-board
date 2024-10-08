@@ -18,6 +18,12 @@ pub struct Message {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+pub struct NewMessage {
+    pub content: String,
+    pub lang: Langs
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 pub struct EditMessage {
     pub id: Uuid,
     pub content: String,
@@ -27,12 +33,19 @@ pub struct EditMessage {
 #[post("/api/messages")]
 pub async fn add_message(
     repo: Data<Arc<Mutex<Vec<Message>>>>,
-    body: Json<Message>,
+    body: Json<NewMessage>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let mut repo = repo.lock().map_err(|_| {
         actix_web::error::ErrorInternalServerError("Failed to acquire lock on message repo")
     })?;
-    repo.push(body.clone());
+
+    let new_message = Message {
+        id: Uuid::new_v4(),
+        created: Utc::now(),
+        content: body.content.clone(),
+        lang: body.lang.clone()
+    };
+    repo.push(new_message);
     Ok(HttpResponse::Ok().finish())
 }
 
