@@ -1,31 +1,18 @@
 #[cfg(test)]
 
 mod tests {
-    use actix_web::{
-        web::{Json, Path},
-        HttpResponse, delete, get, patch, post, http::StatusCode, test, web::Data, App
-    };
-    use chrono::{DateTime, Utc};
+    use actix_web::{http::StatusCode, test, web::Data, App};
+    use chrono::Utc;
     use serde_json::json;
-    use std::{collections::{HashMap, HashSet},
-                sync::{Arc, Mutex}};
+    use std::{
+        collections::{HashMap, HashSet},
+        sync::{Arc, Mutex},
+    };
     use uuid::Uuid;
 
     use crate::clients::*;
     use crate::langs::Langs;
-
-    #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
-    struct Message {
-        id: Uuid,
-        created: DateTime<Utc>,
-        content: String,
-    }
-
-    #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
-    struct EditMessage {
-        id: Uuid,
-        content: String,
-    }
+    use crate::messages::*;
 
     #[actix_rt::test]
     async fn test_register_token() {
@@ -149,184 +136,115 @@ mod tests {
         assert!(!tokens.contains_key("test_token"));
     }
 
-    // Macro to generate add_message functions for different languages
-    macro_rules! create_add_message_endpoint {
-        ($repo:ident, $route:expr, $fn_name:ident) => {
-            #[post($route)]
-            pub async fn $fn_name(
-                $repo: Data<Arc<Mutex<Vec<Message>>>>,
-                body: Json<Message>,
-            ) -> Result<HttpResponse, actix_web::Error> {
-                let mut $repo = $repo.lock().unwrap();
-                $repo.push(body.clone());
-                Ok(HttpResponse::Ok().finish())
-            }
-        };
-    }
-
-    create_add_message_endpoint!(en_message_repo, "/api/messages/en", add_en_message);
-
     #[actix_rt::test]
-    async fn test_add_en_message() {
-        let en_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
-        let app = test::init_service(
+    async fn test_add_message() {
+        let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
+        let mut app = test::init_service(
             App::new()
-                .app_data(Data::new(en_message_repo.clone()))
-                .service(add_en_message),
+                .app_data(Data::new(messages.clone()))
+                .service(add_message),
         )
         .await;
 
-        let message = Message {
+        let new_message = Message {
             id: Uuid::new_v4(),
             created: Utc::now(),
-            content: "Hello, World!".to_string(),
+            content: "Hello, world!".to_string(),
+            lang: Langs::English,
         };
 
         let req = test::TestRequest::post()
-            .uri("/api/messages/en")
-            .set_json(&message)
+            .uri("/api/messages")
+            .set_json(&new_message)
             .to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
 
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
-
-        let repo = en_message_repo.lock().unwrap();
-        assert_eq!(repo.len(), 1);
-        assert_eq!(repo[0], message);
+        let messages = messages.lock().unwrap();
+        assert!(messages.contains(&new_message));
     }
-
-    // Macro to generate get_messages functions for different languages
-    macro_rules! create_get_messages_endpoint {
-        ($repo:ident, $route:expr, $fn_name:ident) => {
-            #[get($route)]
-            pub async fn $fn_name(
-                $repo: Data<Arc<Mutex<Vec<Message>>>>,
-            ) -> Result<HttpResponse, actix_web::Error> {
-                let $repo = $repo.lock().unwrap();
-                Ok(HttpResponse::Ok().json($repo.clone()))
-            }
-        };
-    }
-
-    create_get_messages_endpoint!(en_message_repo, "/api/messages/en", get_en_messages);
 
     #[actix_rt::test]
-    async fn test_get_en_messages() {
-        let en_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![Message {
+    async fn test_get_messages_by_lang() {
+        let message = Message {
             id: Uuid::new_v4(),
             created: Utc::now(),
-            content: "Hello, World!".to_string(),
-        }]));
-        let app = test::init_service(
+            content: "Hello, world!".to_string(),
+            lang: Langs::English,
+        };
+        let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
+        let mut app = test::init_service(
             App::new()
-                .app_data(Data::new(en_message_repo.clone()))
-                .service(get_en_messages),
+                .app_data(Data::new(messages.clone()))
+                .service(get_messages_by_lang),
         )
         .await;
 
         let req = test::TestRequest::get()
-            .uri("/api/messages/en")
+            .uri("/api/messages/English")
             .to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
 
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
-
-        let response_body: Vec<Message> = test::read_body_json(resp).await;
-        let repo = en_message_repo.lock().unwrap();
-        assert_eq!(response_body, *repo);
+        let returned_messages: Vec<Message> = test::read_body_json(resp).await;
+        assert!(returned_messages.contains(&message));
     }
-
-    // Macro to generate edit_message functions for different languages
-    macro_rules! create_edit_message_endpoint {
-        ($repo:ident, $route:expr, $fn_name:ident) => {
-            #[patch($route)]
-            pub async fn $fn_name(
-                $repo: Data<Arc<Mutex<Vec<Message>>>>,
-                body: Json<EditMessage>,
-            ) -> Result<HttpResponse, actix_web::Error> {
-                let mut $repo = $repo.lock().unwrap();
-                let index = $repo.iter().position(|x| x.id == body.id).unwrap();
-                $repo[index].content = body.content.clone();
-                Ok(HttpResponse::Ok().finish())
-            }
-        };
-    }
-
-    create_edit_message_endpoint!(en_message_repo, "/api/messages/en", edit_en_message);
 
     #[actix_rt::test]
-    async fn test_edit_en_message() {
-        let message_id = Uuid::new_v4();
-        let en_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![Message {
-            id: message_id,
+    async fn test_edit_message() {
+        let message = Message {
+            id: Uuid::new_v4(),
             created: Utc::now(),
-            content: "Hello, World!".to_string(),
-        }]));
-        let app = test::init_service(
+            content: "Hello, world!".to_string(),
+            lang: Langs::English,
+        };
+        let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
+        let mut app = test::init_service(
             App::new()
-                .app_data(Data::new(en_message_repo.clone()))
-                .service(edit_en_message),
+                .app_data(Data::new(messages.clone()))
+                .service(edit_message),
         )
         .await;
 
-        let edit_message = EditMessage {
-            id: message_id,
-            content: "Hello, Universe!".to_string(),
+        let edit = EditMessage {
+            id: message.id,
+            content: "Hello, Rust!".to_string(),
         };
 
         let req = test::TestRequest::patch()
-            .uri("/api/messages/en")
-            .set_json(&edit_message)
+            .uri("/api/messages")
+            .set_json(&edit)
             .to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
 
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
-
-        let repo = en_message_repo.lock().unwrap();
-        assert_eq!(repo[0].content, edit_message.content);
+        let messages = messages.lock().unwrap();
+        assert_eq!(messages.iter().find(|x| x.id == message.id).unwrap().content, "Hello, Rust!");
     }
-
-    // Macro to generate delete_message functions for different languages
-    macro_rules! create_delete_message_endpoint {
-        ($repo:ident, $route:expr, $fn_name:ident) => {
-            #[delete($route)]
-            pub async fn $fn_name(
-                $repo: Data<Arc<Mutex<Vec<Message>>>>,
-                id: Path<Uuid>,
-            ) -> Result<HttpResponse, actix_web::Error> {
-                let mut $repo = $repo.lock().unwrap();
-                let index = $repo.iter().position(|x| x.id == *id).unwrap();
-                $repo.remove(index);
-                Ok(HttpResponse::Ok().finish())
-            }
-        };
-    }
-
-    create_delete_message_endpoint!(en_message_repo, "/api/messages/en/{id}", delete_en_message);
 
     #[actix_rt::test]
-    async fn test_delete_en_message() {
-        let message_id = Uuid::new_v4();
-        let en_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![Message {
-            id: message_id,
+    async fn test_delete_message() {
+        let message = Message {
+            id: Uuid::new_v4(),
             created: Utc::now(),
-            content: "Hello, World!".to_string(),
-        }]));
-        let app = test::init_service(
+            content: "Hello, world!".to_string(),
+            lang: Langs::English,
+        };
+        let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
+        let mut app = test::init_service(
             App::new()
-                .app_data(Data::new(en_message_repo.clone()))
-                .service(delete_en_message),
+                .app_data(Data::new(messages.clone()))
+                .service(delete_message),
         )
         .await;
 
         let req = test::TestRequest::delete()
-            .uri(&format!("/api/messages/en/{}", message_id))
+            .uri(&format!("/api/messages/{}", message.id))
             .to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
 
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
-
-        let repo = en_message_repo.lock().unwrap();
-        assert!(repo.is_empty());
+        let messages = messages.lock().unwrap();
+        assert!(messages.iter().find(|x| x.id == message.id).is_none());
     }
 }

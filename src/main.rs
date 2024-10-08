@@ -27,31 +27,15 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
 
     let tokens: Arc<Mutex<HashMap<String, HashSet<Langs>>>> = Arc::new(Mutex::new(HashMap::new()));
-    let en_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
-    let es_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
-    let fr_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
-    let it_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
-    let po_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
-    let de_message_repo: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
-
-    let en_repo_clone = en_message_repo.clone();
-    let es_repo_clone = es_message_repo.clone();
-    let fr_repo_clone = fr_message_repo.clone();
-    let it_repo_clone = it_message_repo.clone();
-    let po_repo_clone = po_message_repo.clone();
-    let de_repo_clone = de_message_repo.clone();
+    let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
+    let messages_clone = messages.clone();
 
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60 * 60)); // Run hourly
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60 * 60 * 24)); 
         loop {
             interval.tick().await;
             let max_age = Duration::weeks(1);
-            remove_old_messages(en_repo_clone.clone(), max_age);
-            remove_old_messages(es_repo_clone.clone(), max_age);
-            remove_old_messages(fr_repo_clone.clone(), max_age);
-            remove_old_messages(it_repo_clone.clone(), max_age);
-            remove_old_messages(po_repo_clone.clone(), max_age);
-            remove_old_messages(de_repo_clone.clone(), max_age);
+            remove_old_messages(messages_clone.clone(), max_age);
         }
     });
 
@@ -61,12 +45,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(logger)
             .wrap(SecurityHeaders)
             .app_data(Data::new(tokens.clone()))
-            .app_data(Data::new(en_message_repo.clone()))
-            .app_data(Data::new(es_message_repo.clone()))
-            .app_data(Data::new(fr_message_repo.clone()))
-            .app_data(Data::new(it_message_repo.clone()))
-            .app_data(Data::new(po_message_repo.clone()))
-            .app_data(Data::new(de_message_repo.clone()))
+            .app_data(Data::new(messages.clone()))
             .configure(routing::configure_client_routes)
             .configure(routing::configure_insecure_message_routes)
             .service(
