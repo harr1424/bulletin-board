@@ -151,6 +151,7 @@ mod tests {
             created: Utc::now(),
             content: "Hello, world!".to_string(),
             lang: Langs::English,
+            expires: Expiration::Week,
         };
 
         let req = test::TestRequest::post()
@@ -161,7 +162,11 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
 
         let messages = messages.lock().unwrap();
-        assert!(messages.contains(&new_message));
+        assert!(messages.iter().any(|msg| {
+            msg.content == new_message.content
+                && msg.lang == new_message.lang
+                && msg.expires == new_message.expires
+        }));
     }
 
     #[actix_rt::test]
@@ -171,6 +176,7 @@ mod tests {
             created: Utc::now(),
             content: "Hello, world!".to_string(),
             lang: Langs::English,
+            expires: Expiration::Week,
         };
         let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
         let mut app = test::init_service(
@@ -197,6 +203,7 @@ mod tests {
             created: Utc::now(),
             content: "Hello, world!".to_string(),
             lang: Langs::English,
+            expires: Expiration::Week,
         };
         let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
         let mut app = test::init_service(
@@ -219,7 +226,14 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
 
         let messages = messages.lock().unwrap();
-        assert_eq!(messages.iter().find(|x| x.id == message.id).unwrap().content, "Hello, Rust!");
+        assert_eq!(
+            messages
+                .iter()
+                .find(|x| x.id == message.id)
+                .unwrap()
+                .content,
+            "Hello, Rust!"
+        );
     }
 
     #[actix_rt::test]
@@ -229,6 +243,7 @@ mod tests {
             created: Utc::now(),
             content: "Hello, world!".to_string(),
             lang: Langs::English,
+            expires: Expiration::Week,
         };
         let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
         let mut app = test::init_service(

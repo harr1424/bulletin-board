@@ -1,6 +1,5 @@
 use actix_web::{web::scope, middleware::Logger, web::Data, App, HttpServer};
 use auth::ApiKeyMiddleware;
-use chrono::Duration;
 use std::collections::HashSet;
 use std::{
     collections::HashMap,
@@ -31,11 +30,10 @@ async fn main() -> std::io::Result<()> {
     let messages_clone = messages.clone();
 
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60 * 60 * 24)); 
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60)); 
         loop {
             interval.tick().await;
-            let max_age = Duration::weeks(1);
-            remove_old_messages(messages_clone.clone(), max_age);
+            remove_old_messages(messages_clone.clone());
         }
     });
 

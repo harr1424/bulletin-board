@@ -9,18 +9,27 @@ use uuid::Uuid;
 
 use crate::langs::Langs;
 
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Debug, PartialEq)]
+pub enum Expiration {
+    Hour = 60 * 60,
+    Day = 60 * 60 * 24,
+    Week = 60 * 60 * 24 * 7,
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 pub struct Message {
     pub id: Uuid,
     pub created: DateTime<Utc>,
     pub content: String,
-    pub lang: Langs
+    pub lang: Langs,
+    pub expires: Expiration
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 pub struct NewMessage {
     pub content: String,
-    pub lang: Langs
+    pub lang: Langs,
+    pub expires: Expiration,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -43,7 +52,8 @@ pub async fn add_message(
         id: Uuid::new_v4(),
         created: Utc::now(),
         content: body.content.clone(),
-        lang: body.lang.clone()
+        lang: body.lang.clone(),
+        expires: body.expires.clone()
     };
     repo.push(new_message);
     Ok(HttpResponse::Ok().finish())
@@ -102,8 +112,8 @@ pub async fn delete_message(
     }
 }
 // Function to iterate over a Arc<Mutex<Vec<Message>>> and remove any messages exceeding a certain age
-pub fn remove_old_messages(repo: Arc<Mutex<Vec<Message>>>, max_age: Duration) {
+pub fn remove_old_messages(repo: Arc<Mutex<Vec<Message>>>) {
     let mut repo = repo.lock().unwrap();
     let now = Utc::now();
-    repo.retain(|msg| now.signed_duration_since(msg.created) < max_age);
+    repo.retain(|msg| now.signed_duration_since(msg.created) < Duration::seconds(msg.expires as i64));
 }
