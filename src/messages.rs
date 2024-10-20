@@ -22,7 +22,7 @@ pub struct Message {
     pub created: DateTime<Utc>,
     pub content: String,
     pub lang: Langs,
-    pub expires: Expiration
+    pub expires: Expiration,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -53,7 +53,7 @@ pub async fn add_message(
         created: Utc::now(),
         content: body.content.clone(),
         lang: body.lang.clone(),
-        expires: body.expires.clone()
+        expires: body.expires.clone(),
     };
     repo.push(new_message);
     Ok(HttpResponse::Ok().finish())
@@ -68,12 +68,10 @@ pub async fn get_messages_by_lang(
     let repo = repo.lock().map_err(|_| {
         actix_web::error::ErrorInternalServerError("Failed to acquire lock on message repo")
     })?;
-    let messages: Vec<Message> = repo
-        .iter()
-        .filter(|x| x.lang == *lang)
-        .cloned()
-        .collect();
-    Ok(HttpResponse::Ok().json(messages))
+    let messages: Vec<Message> = repo.iter().filter(|x| x.lang == *lang).cloned().collect();
+    Ok(HttpResponse::Ok()
+        .content_type("application/json; charset=utf-8")
+        .json(messages))
 }
 
 // Endpoint to edit a message
@@ -115,5 +113,7 @@ pub async fn delete_message(
 pub fn remove_old_messages(repo: Arc<Mutex<Vec<Message>>>) {
     let mut repo = repo.lock().unwrap();
     let now = Utc::now();
-    repo.retain(|msg| now.signed_duration_since(msg.created) < Duration::seconds(msg.expires as i64));
+    repo.retain(|msg| {
+        now.signed_duration_since(msg.created) < Duration::seconds(msg.expires as i64)
+    });
 }
