@@ -23,6 +23,7 @@ pub struct Message {
     pub content: String,
     pub lang: Langs,
     pub expires: Expiration,
+    pub title: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -30,12 +31,14 @@ pub struct NewMessage {
     pub content: String,
     pub lang: Langs,
     pub expires: Expiration,
+    pub title: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 pub struct EditMessage {
     pub id: Uuid,
     pub content: String,
+    pub title: String,
 }
 
 // Endpoint to post a new message to the shared message repo
@@ -54,6 +57,7 @@ pub async fn add_message(
         content: body.content.clone(),
         lang: body.lang.clone(),
         expires: body.expires.clone(),
+        title: body.title.clone(),
     };
     repo.push(new_message);
     Ok(HttpResponse::Ok().finish())
