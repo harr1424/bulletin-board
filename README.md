@@ -1,3 +1,3 @@
-## Work in progress
+## Bulletin Board
 
-A messaging service. 
+A token based messaging service implemented using Actix Web and DynamoDB. 
