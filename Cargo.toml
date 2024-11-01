@@ -17,6 +17,7 @@ futures-util = "0.3.31"
 dotenv = "0.15.0"
 aws-config = "0.0.26-alpha"
 aws-sdk-dynamodb = "0.0.26-alpha"
+actix_route_rate_limiter = "0.2.1"
 
 [dev-dependencies]
 actix-rt = "2"

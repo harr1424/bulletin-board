@@ -1,5 +1,5 @@
 use actix_web::{
-    delete, get, patch, post,
+    delete, patch, post,
     web::{Data, Json, Path},
     HttpResponse,
 };
@@ -9,6 +9,7 @@ use serde::Serialize;
 
 use crate::Langs;
 
+#[allow(dead_code)]
 #[derive(Serialize)]
 struct TokenInfo {
     token: String,
@@ -47,8 +48,7 @@ pub async fn register_token(
     Ok(HttpResponse::Created().finish())
 }
 
-// Endpoint to get langs associated with a token
-#[get("/api/get_langs/{token}")]
+#[allow(dead_code)]
 pub async fn get_langs(
     dynamodb_client: Data<Client>,
     token: Path<String>,
@@ -71,31 +71,29 @@ pub async fn get_langs(
     }
 }
 
-// Endpoint to get all tokens and associated langs
-#[get("/api/all_tokens")]
-pub async fn get_all_tokens(
-    dynamodb_client: Data<Client>,
-) -> Result<HttpResponse, actix_web::Error> {
-    let request = dynamodb_client.scan().table_name("KoradiTokens");
+// pub async fn get_all_tokens(
+//     dynamodb_client: Data<Client>,
+// ) -> Result<HttpResponse, actix_web::Error> {
+//     let request = dynamodb_client.scan().table_name("KoradiTokens");
 
-    let result = request.send().await.map_err(|_| actix_web::error::ErrorInternalServerError("Failed to get all tokens"))?;
+//     let result = request.send().await.map_err(|_| actix_web::error::ErrorInternalServerError("Failed to get all tokens"))?;
 
-    let tokens: Vec<TokenInfo> = result
-        .items
-        .unwrap_or_default()
-        .into_iter()
-        .filter_map(|item| {
-            // Extract token
-            let token = item.get("Token").and_then(|v| v.as_s().ok())?.to_string();
-            let langs_attr = item.get("Langs")?;
-            let langs = set_to_langs(langs_attr);
+//     let tokens: Vec<TokenInfo> = result
+//         .items
+//         .unwrap_or_default()
+//         .into_iter()
+//         .filter_map(|item| {
+//             // Extract token
+//             let token = item.get("Token").and_then(|v| v.as_s().ok())?.to_string();
+//             let langs_attr = item.get("Langs")?;
+//             let langs = set_to_langs(langs_attr);
 
-            Some(TokenInfo { token, langs })
-        })
-        .collect();
+//             Some(TokenInfo { token, langs })
+//         })
+//         .collect();
 
-    Ok(HttpResponse::Ok().json(tokens))
-}
+//     Ok(HttpResponse::Ok().json(tokens))
+// }
 
 // Endpoint to add langs associated with a token
 #[patch("/api/add_langs/{token}")]

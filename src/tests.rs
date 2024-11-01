@@ -37,30 +37,6 @@ mod tests {
     }
 
     #[actix_rt::test]
-    async fn test_get_langs() {
-        let mut map = HashMap::new();
-        let mut set = HashSet::new();
-        set.insert(Langs::English);
-        map.insert("test_token".to_string(), set);
-        let tokens: Arc<Mutex<HashMap<String, HashSet<Langs>>>> = Arc::new(Mutex::new(map));
-        let mut app = test::init_service(
-            App::new()
-                .app_data(Data::new(tokens.clone()))
-                .service(get_langs),
-        )
-        .await;
-
-        let req = test::TestRequest::get()
-            .uri("/api/get_langs/test_token")
-            .to_request();
-        let resp = test::call_service(&mut app, req).await;
-        assert_eq!(resp.status(), StatusCode::OK);
-
-        let langs: HashSet<Langs> = test::read_body_json(resp).await;
-        assert!(langs.contains(&Langs::English));
-    }
-
-    #[actix_rt::test]
     async fn test_add_langs() {
         let mut map = HashMap::new();
         let mut set = HashSet::new();

@@ -4,8 +4,6 @@ use crate::clients::*;
 
 pub fn configure_client_routes(cfg: &mut ServiceConfig) {
     cfg.service(register_token);
-    cfg.service(get_langs);         // TODO unregster this once DynamoDB is set up
-    cfg.service(get_all_tokens);  // TODO unregster this once DynamoDB is set up
     cfg.service(add_langs);
     cfg.service(remove_langs);
     cfg.service(unregister_token);
