@@ -36,7 +36,7 @@ async fn main() -> std::io::Result<()> {
 
     let limiter = LimiterBuilder::new()
         .with_duration(Duration::minutes(1))
-        .with_num_requests(48)
+        .with_num_requests(60)
         .build();
 
     HttpServer::new(move || {
