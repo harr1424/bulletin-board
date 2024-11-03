@@ -28,6 +28,7 @@ mod tests {
             lang: Langs::English,
             expires: Expiration::Week,
             title: "Test".to_string(),
+            image_url: None,
         };
 
         let req = test::TestRequest::post()
@@ -54,6 +55,7 @@ mod tests {
             lang: Langs::English,
             expires: Expiration::Week,
             title: "Test".to_string(),
+            image_url: None,
         };
         let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
         let mut app = test::init_service(
@@ -82,6 +84,7 @@ mod tests {
             lang: Langs::English,
             expires: Expiration::Week,
             title: "Test".to_string(),
+            image_url: None,
         };
         let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
         let mut app = test::init_service(
@@ -95,6 +98,7 @@ mod tests {
             id: message.id,
             content: "Hello, Rust!".to_string(),
             title: "Test".to_string(),
+            image_url: None
         };
 
         let req = test::TestRequest::patch()
@@ -124,6 +128,7 @@ mod tests {
             lang: Langs::English,
             expires: Expiration::Week,
             title: "Test".to_string(),
+            image_url: None,
         };
         let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
         let mut app = test::init_service(

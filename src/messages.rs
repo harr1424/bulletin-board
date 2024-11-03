@@ -14,6 +14,7 @@ pub enum Expiration {
     Hour = 60 * 60,
     Day = 60 * 60 * 24,
     Week = 60 * 60 * 24 * 7,
+    Quarter = 60 * 60 * 24 * 7 * 12,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -24,6 +25,7 @@ pub struct Message {
     pub lang: Langs,
     pub expires: Expiration,
     pub title: String,
+    pub image_url : Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -32,6 +34,7 @@ pub struct NewMessage {
     pub lang: Langs,
     pub expires: Expiration,
     pub title: String,
+    pub image_url : Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -39,6 +42,7 @@ pub struct EditMessage {
     pub id: Uuid,
     pub content: String,
     pub title: String,
+    pub image_url : Option<String>,
 }
 
 // Endpoint to post a new message to the shared message repo
@@ -58,6 +62,7 @@ pub async fn add_message(
         lang: body.lang.clone(),
         expires: body.expires.clone(),
         title: body.title.clone(),
+        image_url: body.image_url.clone(),
     };
     repo.push(new_message);
     Ok(HttpResponse::Ok().finish())
