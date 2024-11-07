@@ -3,7 +3,14 @@ use actix_web::{middleware::Logger, web::scope, web::Data, App, HttpServer};
 use auth::ApiKeyMiddleware;
 use chrono::Duration;
 use dotenv::dotenv;
-use std::{env, sync::{Arc, Mutex}};
+use rustls::{Certificate, PrivateKey, ServerConfig};
+use rustls_pemfile::{certs, pkcs8_private_keys};
+use std::{
+    env,
+    fs::File,
+    io::BufReader,
+    sync::{Arc, Mutex},
+};
 
 mod auth;
 mod langs;
@@ -21,11 +28,15 @@ async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 
-    let listen_addr = env::var("LISTEN").expect("LISTEN must be set");
+    let insecure_listen_addr = env::var("LISTEN_HTTP").expect("LISTEN_HTTP must be set");
+    let secure_listen_addr = env::var("LISTEN_HTTPS").expect("LISTEN_HTTPS must be set");
+    let cert_path = env::var("TLS_CERT_PATH").expect("TLS_CERT_PATH must be set");
+    let key_path = env::var("TLS_KEY_PATH").expect("TLS_KEY_PATH must be set");
 
     let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
     let messages_clone = messages.clone();
 
+    // background task to remove messages past their expiry
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
         loop {
@@ -39,7 +50,9 @@ async fn main() -> std::io::Result<()> {
         .with_num_requests(60)
         .build();
 
-    HttpServer::new(move || {
+    let rustls_config = load_rustls_config(&cert_path, &key_path)?;
+
+    let app_factory = move || {
         let logger = Logger::default();
         App::new()
             .wrap(logger)
@@ -52,8 +65,48 @@ async fn main() -> std::io::Result<()> {
                     .wrap(ApiKeyMiddleware)
                     .configure(routing::configure_secure_message_routes),
             )
-    })
-    .bind(listen_addr)?
-    .run()
-    .await
+    };
+
+    let http_server = HttpServer::new(app_factory.clone())
+        .bind(insecure_listen_addr)?
+        .run();
+
+    let https_server = HttpServer::new(app_factory)
+        .bind_rustls(&secure_listen_addr, rustls_config)?
+        .run();
+
+    futures_util::try_join!(http_server, https_server)?;
+
+    Ok(())
+}
+
+fn load_rustls_config(cert_path: &str, key_path: &str) -> std::io::Result<ServerConfig> {
+    let cert_file = &mut BufReader::new(File::open(cert_path)?);
+    let cert_chain = certs(cert_file)
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid cert"))?
+        .into_iter()
+        .map(Certificate)
+        .collect();
+
+    let key_file = &mut BufReader::new(File::open(key_path)?);
+    let mut keys: Vec<PrivateKey> = pkcs8_private_keys(key_file)
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid key"))?
+        .into_iter()
+        .map(PrivateKey)
+        .collect();
+
+    if keys.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "No private key found",
+        ));
+    }
+
+    let config = ServerConfig::builder()
+        .with_safe_defaults()
+        .with_no_client_auth()
+        .with_single_cert(cert_chain, keys.remove(0))
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+
+    Ok(config)
 }
