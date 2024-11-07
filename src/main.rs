@@ -34,14 +34,15 @@ async fn main() -> std::io::Result<()> {
     let key_path = env::var("TLS_KEY_PATH").expect("TLS_KEY_PATH must be set");
 
     let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
-    let messages_clone = messages.clone();
+    let background_messages_clone = messages.clone();
+    let secure_messages_clone = messages.clone();
 
     // background task to remove messages past their expiry
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
         loop {
             interval.tick().await;
-            remove_old_messages(messages_clone.clone());
+            remove_old_messages(background_messages_clone.clone());
         }
     });
 
@@ -52,7 +53,22 @@ async fn main() -> std::io::Result<()> {
 
     let rustls_config = load_rustls_config(&cert_path, &key_path)?;
 
-    let app_factory = move || {
+    // let app_factory = move || {
+    //     let logger = Logger::default();
+    //     App::new()
+    //         .wrap(logger)
+    //         .wrap(SecurityHeaders)
+    //         .wrap(RateLimiter::new(Arc::clone(&limiter)))
+    //         .app_data(Data::new(messages.clone()))
+    //         .configure(routing::configure_insecure_message_routes)
+    //         .service(
+    //             scope("/admin")
+    //                 .wrap(ApiKeyMiddleware)
+    //                 .configure(routing::configure_secure_message_routes),
+    //         )
+    // };
+
+    let insecure_app_factory = move || {
         let logger = Logger::default();
         App::new()
             .wrap(logger)
@@ -60,6 +76,14 @@ async fn main() -> std::io::Result<()> {
             .wrap(RateLimiter::new(Arc::clone(&limiter)))
             .app_data(Data::new(messages.clone()))
             .configure(routing::configure_insecure_message_routes)
+    };
+    
+    let secure_app_factory = move || {
+        let logger = Logger::default();
+        App::new()
+            .wrap(logger)
+            .wrap(SecurityHeaders)
+            .app_data(Data::new(secure_messages_clone.clone()))
             .service(
                 scope("/admin")
                     .wrap(ApiKeyMiddleware)
@@ -67,11 +91,11 @@ async fn main() -> std::io::Result<()> {
             )
     };
 
-    let http_server = HttpServer::new(app_factory.clone())
+    let http_server = HttpServer::new(insecure_app_factory.clone())
         .bind(insecure_listen_addr)?
         .run();
 
-    let https_server = HttpServer::new(app_factory)
+    let https_server = HttpServer::new(secure_app_factory)
         .bind_rustls(&secure_listen_addr, rustls_config)?
         .run();
 
