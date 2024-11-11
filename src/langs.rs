@@ -12,7 +12,6 @@ pub enum Langs {
 }
 
 impl Langs {
-    // Helper function to map strings to Langs enum variants
     fn from_str_internal(s: &str) -> Option<Self> {
         match s {
             "English" => Some(Langs::English),
@@ -36,16 +35,15 @@ impl ToString for Langs {
             Langs::Portuguese => "Portuguese",
             Langs::German => "German",
         }
-        .to_string() // Move to_string() call outside the match for simplicity
+        .to_string()
     }
 }
 
 impl From<String> for Langs {
     fn from(s: String) -> Self {
-        // Reuse the internal helper function
         Langs::from_str_internal(&s).unwrap_or_else(|| {
             error!("Unknown language found in table: {}", s);
-            Langs::English // Default to English if unknown
+            Langs::English 
         })
     }
 }

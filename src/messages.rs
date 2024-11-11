@@ -15,6 +15,7 @@ pub enum Expiration {
     Day = 60 * 60 * 24,
     Week = 60 * 60 * 24 * 7,
     Quarter = 60 * 60 * 24 * 7 * 12,
+    Year = 60 * 60 * 24 * 365,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -45,7 +46,6 @@ pub struct EditMessage {
     pub image_url : Option<String>,
 }
 
-// Endpoint to post a new message to the shared message repo
 #[post("/api/messages")]
 pub async fn add_message(
     repo: Data<Arc<Mutex<Vec<Message>>>>,
@@ -68,7 +68,6 @@ pub async fn add_message(
     Ok(HttpResponse::Ok().finish())
 }
 
-// Endpoint to get a message by language
 #[get("/api/messages/{lang}")]
 pub async fn get_messages_by_lang(
     repo: Data<Arc<Mutex<Vec<Message>>>>,
@@ -83,7 +82,6 @@ pub async fn get_messages_by_lang(
         .json(messages))
 }
 
-// Endpoint to edit a message
 #[patch("/api/messages")]
 pub async fn edit_message(
     repo: Data<Arc<Mutex<Vec<Message>>>>,
@@ -94,14 +92,15 @@ pub async fn edit_message(
     })?;
 
     if let Some(index) = repo.iter().position(|x| x.id == body.id) {
+        repo[index].title = body.title.clone();
         repo[index].content = body.content.clone();
+        repo[index].image_url = body.image_url.clone();
         Ok(HttpResponse::Ok().finish())
     } else {
         Ok(HttpResponse::NotFound().finish())
     }
 }
 
-// Endpoint to delete a message by id
 #[delete("/api/messages/{id}")]
 pub async fn delete_message(
     repo: Data<Arc<Mutex<Vec<Message>>>>,
@@ -118,7 +117,6 @@ pub async fn delete_message(
         Ok(HttpResponse::NotFound().finish())
     }
 }
-// Function to iterate over a Arc<Mutex<Vec<Message>>> and remove any messages exceeding a certain age
 pub fn remove_old_messages(repo: Arc<Mutex<Vec<Message>>>) {
     let mut repo = repo.lock().unwrap();
     let now = Utc::now();

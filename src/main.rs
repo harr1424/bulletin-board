@@ -53,7 +53,7 @@ async fn main() -> std::io::Result<()> {
 
     let tls_limiter = LimiterBuilder::new()
         .with_duration(Duration::minutes(1))
-        .with_num_requests(6)
+        .with_num_requests(3)
         .build();
 
 

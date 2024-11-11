@@ -45,7 +45,7 @@ where
             let mut res = fut.await?;
             res.headers_mut().insert(
                 actix_web::http::header::CONTENT_SECURITY_POLICY,
-                "default-src 'self'".parse().unwrap(),
+                "default-src 'none'; frame-ancestors 'none'".parse().unwrap(),
             );
             res.headers_mut().insert(
                 actix_web::http::header::X_CONTENT_TYPE_OPTIONS,
