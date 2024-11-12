@@ -26,7 +26,9 @@ pub struct Message {
     pub lang: Langs,
     pub expires: Expiration,
     pub title: String,
-    pub image_url : Option<String>,
+    pub image_url: Option<String>,
+    pub image_data: Option<Vec<u8>>,
+    pub image_mime_type: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -35,7 +37,9 @@ pub struct NewMessage {
     pub lang: Langs,
     pub expires: Expiration,
     pub title: String,
-    pub image_url : Option<String>,
+    pub image_url: Option<String>,
+    pub image_data: Option<Vec<u8>>,
+    pub image_mime_type: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -43,7 +47,7 @@ pub struct EditMessage {
     pub id: Uuid,
     pub content: String,
     pub title: String,
-    pub image_url : Option<String>,
+    pub image_url: Option<String>,
 }
 
 #[post("/api/messages")]
@@ -63,6 +67,8 @@ pub async fn add_message(
         expires: body.expires.clone(),
         title: body.title.clone(),
         image_url: body.image_url.clone(),
+        image_data: body.image_data.clone(),
+        image_mime_type: body.image_mime_type.clone(),
     };
     repo.push(new_message);
     Ok(HttpResponse::Ok().finish())

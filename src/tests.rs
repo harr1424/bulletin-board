@@ -29,6 +29,8 @@ mod tests {
             expires: Expiration::Week,
             title: "Test".to_string(),
             image_url: None,
+            image_data: None,
+            image_mime_type: None,
         };
 
         let req = test::TestRequest::post()
@@ -56,6 +58,8 @@ mod tests {
             expires: Expiration::Week,
             title: "Test".to_string(),
             image_url: None,
+            image_data: None,
+            image_mime_type: None,
         };
         let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
         let mut app = test::init_service(
@@ -85,6 +89,8 @@ mod tests {
             expires: Expiration::Week,
             title: "Test".to_string(),
             image_url: None,
+            image_data: None,
+            image_mime_type: None,
         };
         let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
         let mut app = test::init_service(
@@ -129,6 +135,8 @@ mod tests {
             expires: Expiration::Week,
             title: "Test".to_string(),
             image_url: None,
+            image_data: None,
+            image_mime_type: None,
         };
         let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(vec![message.clone()]));
         let mut app = test::init_service(
