@@ -1,6 +1,7 @@
 use actix_route_rate_limiter::{LimiterBuilder, RateLimiter};
 use actix_web::{middleware::Logger, web::scope, web::Data, App, HttpServer};
 use auth::ApiKeyMiddleware;
+use backup::{BackupConfig, BackupSystem};
 use chrono::Duration;
 use dotenv::dotenv;
 use rustls::{Certificate, PrivateKey, ServerConfig};
@@ -17,6 +18,7 @@ mod langs;
 mod messages;
 mod routing;
 mod security_headers;
+mod backup;
 mod tests;
 
 use messages::{remove_old_messages, Message};
@@ -37,6 +39,11 @@ async fn main() -> std::io::Result<()> {
     let messages: Arc<Mutex<Vec<Message>>> = Arc::new(Mutex::new(Vec::new()));
     let background_messages_clone = messages.clone();
     let tls_messages_clone = messages.clone();
+    let backup_messages_clone = messages.clone();
+
+    if let Err(e) = configure_backup_system(backup_messages_clone.clone()).await {
+        log::error!("Failed to configure backup system: {}", e);
+    }
 
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
@@ -123,4 +130,12 @@ fn load_rustls_config(cert_path: &str, key_path: &str) -> std::io::Result<Server
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
     Ok(config)
+}
+
+async fn configure_backup_system(messages: Arc<Mutex<Vec<Message>>>) -> Result<(), Box<dyn std::error::Error>> {
+    let config = BackupConfig::from_env()?;
+    let backup_system = BackupSystem::new(messages, config).await?;
+    backup_system.start_backup_task().await;
+
+    Ok(())
 }

@@ -18,6 +18,10 @@ dotenv = "0.15.0"
 actix_route_rate_limiter = "0.2.1"
 rustls = "0.20"
 rustls-pemfile = "1.0"
+thiserror = "2.0.3"
+aws-sdk-s3 = "1.61.0"
+aws-config = "1.5.10"
+zstd = "0.13.2"
 
 [dev-dependencies]
 actix-rt = "2"
