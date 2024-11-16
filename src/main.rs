@@ -1,7 +1,6 @@
 use actix_route_rate_limiter::{LimiterBuilder, RateLimiter};
 use actix_web::{middleware::Logger, web::scope, web::Data, App, HttpServer};
 use auth::ApiKeyMiddleware;
-use backup::{BackupConfig, BackupSystem};
 use chrono::Duration;
 use dotenv::dotenv;
 use rustls::{Certificate, PrivateKey, ServerConfig};
@@ -14,13 +13,14 @@ use std::{
 };
 
 mod auth;
+mod backup;
 mod langs;
 mod messages;
 mod routing;
 mod security_headers;
-mod backup;
 mod tests;
 
+use backup::{BackupConfig, BackupSystem};
 use messages::{remove_old_messages, Message};
 use security_headers::SecurityHeaders;
 
@@ -62,7 +62,6 @@ async fn main() -> std::io::Result<()> {
         .with_duration(Duration::minutes(1))
         .with_num_requests(3)
         .build();
-
 
     let insecure_app_factory = move || {
         let logger = Logger::default();
@@ -132,9 +131,27 @@ fn load_rustls_config(cert_path: &str, key_path: &str) -> std::io::Result<Server
     Ok(config)
 }
 
-async fn configure_backup_system(messages: Arc<Mutex<Vec<Message>>>) -> Result<(), Box<dyn std::error::Error>> {
+async fn configure_backup_system(
+    messages: Arc<Mutex<Vec<Message>>>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let config = BackupConfig::from_env()?;
-    let backup_system = BackupSystem::new(messages, config).await?;
+    let backup_system = BackupSystem::new(messages.clone(), config).await?;
+
+    {
+        let mut messages_guard = messages.lock().unwrap();
+        if messages_guard.is_empty() {
+            match backup_system.restore_latest_backup().await {
+                Ok(restored_messages) => {
+                    *messages_guard = restored_messages;
+                    log::info!("Successfully restored messages from latest backup");
+                }
+                Err(e) => {
+                    log::error!("Failed to restore from backup: {}", e);
+                }
+            }
+        }
+    }
+
     backup_system.start_backup_task().await;
 
     Ok(())

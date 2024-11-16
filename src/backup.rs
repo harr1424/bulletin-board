@@ -126,7 +126,7 @@ impl BackupSystem {
                 match self.perform_backup().await {
                     Ok(metrics) => {
                         log::info!(
-                            "Backup task completed with original size {}, compressed size {}, compression ratio {}, compressed in {} ms, and uploaded in {} ms",
+                            "Backup task completed with original size {} bytes, compressed size {} bytes, compression ratio {:.4}, compressed in {} ms, and uploaded in {} ms",
                             metrics.original_size,
                             metrics.compressed_size,
                             metrics.original_size as f64 / metrics.compressed_size as f64,
@@ -161,7 +161,6 @@ impl BackupSystem {
         let compression_time = compression_start.elapsed();
         let compressed_size = compressed.len();
 
-        // Upload to S3
         let upload_start = std::time::Instant::now();
         self.client
             .put_object()
@@ -203,7 +202,6 @@ impl BackupSystem {
 
         for object in objects.contents() {
             if let (Some(key), Some(last_modified)) = (object.key(), object.last_modified()) {
-                // Handle the Result from to_millis()
                 if let Ok(millis) = last_modified.to_millis() {
                     let last_modified = Utc.timestamp_millis_opt(millis).unwrap();
 
@@ -222,27 +220,32 @@ impl BackupSystem {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub async fn restore_from_backup(
-        &self,
-        backup_key: &str,
-    ) -> Result<Vec<Message>, Box<dyn std::error::Error>> {
-        // Download the backup from S3
+    pub async fn restore_latest_backup(&self) -> Result<Vec<Message>, Box<dyn std::error::Error>> {
+        let objects = self
+            .client
+            .list_objects_v2()
+            .bucket(&self.config.bucket_name)
+            .prefix(&self.config.prefix)
+            .send()
+            .await?;
+
+        let latest_key = objects
+            .contents()
+            .iter()
+            .max_by_key(|obj| obj.last_modified())
+            .and_then(|obj| obj.key())
+            .ok_or("No backups found")?;
+
         let response = self
             .client
             .get_object()
             .bucket(&self.config.bucket_name)
-            .key(backup_key)
+            .key(latest_key)
             .send()
             .await?;
 
-        // Read the compressed data
         let compressed_data = response.body.collect().await?.into_bytes();
-
-        // Decompress
         let decompressed = zstd::stream::decode_all(Cursor::new(compressed_data))?;
-
-        // Deserialize
         let messages: Vec<Message> = serde_json::from_slice(&decompressed)?;
 
         Ok(messages)
