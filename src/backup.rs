@@ -76,7 +76,7 @@ impl BackupConfig {
 }
 
 pub struct BackupMetrics {
-    pub original_size: usize,
+    pub message_count: usize,
     pub compressed_size: usize,
     pub compression_time_ms: u128,
     pub upload_time_ms: u128,
@@ -126,10 +126,9 @@ impl BackupSystem {
                 match self.perform_backup().await {
                     Ok(metrics) => {
                         log::info!(
-                            "Backup task completed with original size {} bytes, compressed size {} bytes, compression ratio {:.4}, compressed in {} ms, and uploaded in {} ms",
-                            metrics.original_size,
+                            "Backup task completed for {} messages having compressed size {} bytes taking {} ms to compress, and uploaded in {} ms",
+                            metrics.message_count,
                             metrics.compressed_size,
-                            metrics.original_size as f64 / metrics.compressed_size as f64,
                             metrics.compression_time_ms,
                             metrics.upload_time_ms,
                         );
@@ -147,12 +146,11 @@ impl BackupSystem {
         let key = format!("{}/backup_{}.json.zst", self.config.prefix, timestamp);
 
         // Serialize messages in a separate scope so the lock is dropped
-        let (json, original_size, message_count) = {
+        let (json, message_count) = {
             let messages = self.messages.lock().unwrap();
-            let original_size = messages.len() * std::mem::size_of::<Message>();
             let message_count = messages.len();
             let json = serde_json::to_string(&*messages)?;
-            (json, original_size, message_count)
+            (json, message_count)
         };
 
         let compression_start = std::time::Instant::now();
@@ -169,7 +167,6 @@ impl BackupSystem {
             .body(ByteStream::from(compressed))
             .content_type("application/zstd+bincode")
             .storage_class(aws_sdk_s3::types::StorageClass::StandardIa)
-            .metadata("original_size", original_size.to_string())
             .metadata("compressed_size", compressed_size.to_string())
             .metadata("message_count", message_count.to_string())
             .send()
@@ -182,7 +179,7 @@ impl BackupSystem {
             .map_err(|e| BackupError::Unknown(e.to_string().into()))?;
 
         Ok(BackupMetrics {
-            original_size,
+            message_count,
             compressed_size,
             compression_time_ms: compression_time.as_millis(),
             upload_time_ms: upload_time.as_millis(),
